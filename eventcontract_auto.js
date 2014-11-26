@@ -7,6 +7,8 @@
  * element must be present in the DOM for event binding to succeed.
  */
 
+goog.provide('jsaction.eventContractAuto');
+
 goog.require('jsaction.EventContract');
 
 

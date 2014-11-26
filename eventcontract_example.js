@@ -13,6 +13,8 @@
  * cooperate, and to check that the code jscompiles properly.
  */
 
+goog.provide('jsaction.eventContractExample');
+
 goog.require('jsaction.EventContract');
 
 

@@ -271,6 +271,17 @@ jsaction.event.preventDefault = function(e) {
 
 
 /**
+ * Gets the target of the event.  In IE8 and older the 'target' property
+ * is not support and the 'srcElement' property has to be used instead.
+ * @param {!Event} e The event to get the target of.
+ * @return {!Element} The target element.
+ */
+jsaction.event.getTarget = function(e) {
+  return /** @type {!Element} */ (e.target || e.srcElement);
+};
+
+
+/**
  * Whether we are on a Mac. Not pulling in useragent just for this.
  * NOTE(izaakr): navigator does not exist in google_js_test, hence the test
  * for its existence.
@@ -338,6 +349,9 @@ jsaction.event.isGecko = typeof navigator != 'undefined' &&
  * @private
  */
 jsaction.event.isValidActionKeyTarget_ = function(element) {
+  if (!('getAttribute' in element)) {
+    return false;
+  }
   var tagName = (
       element.getAttribute('role') || element.type || element.tagName).
       toUpperCase();
@@ -369,11 +383,11 @@ jsaction.event.hasModifierKey_ = function(e) {
  * @return {boolean} If preventDefault should be called.
  */
 jsaction.event.shouldCallPreventDefaultOnNativeHtmlControl = function(e) {
-  var el = /** @type {!Element} */ (e.srcElement || e.target);
+  var el = jsaction.event.getTarget(e);
   var elementName = (el.getAttribute('role') || el.tagName).toUpperCase();
   var type = el.type;
   return elementName == 'BUTTON' || !!type &&
-      !goog.array.contains(jsaction.event.PROCESS_SPACE, type.toUpperCase());
+      !(type.toUpperCase() in jsaction.event.PROCESS_SPACE);
 };
 
 
@@ -389,7 +403,7 @@ jsaction.event.isActionKeyEvent = function(e) {
   if (jsaction.event.isWebKit_ && key == jsaction.KeyCodes.MAC_ENTER) {
     key = jsaction.KeyCodes.ENTER;
   }
-  var el = /** @type {!Element} */ (e.srcElement || e.target);
+  var el = jsaction.event.getTarget(e);
   var id = (el.getAttribute('role') || el.type || el.tagName).toUpperCase();
   var kCodes = key == jsaction.KeyCodes.ENTER || key == jsaction.KeyCodes.SPACE;
   var validTypeMods = e.type == jsaction.EventType.KEYDOWN &&
@@ -411,7 +425,7 @@ jsaction.event.isActionKeyEvent = function(e) {
  */
 jsaction.event.isSpaceKeyEvent = function(e) {
   var key = e.which || e.keyCode || e.key;
-  var el = /** @type {!Element} */ (e.srcElement || e.target);
+  var el = jsaction.event.getTarget(e);
   var elementName = (el.type || el.tagName).toUpperCase();
   return key == jsaction.KeyCodes.SPACE && elementName != 'CHECKBOX';
 };
@@ -429,16 +443,20 @@ jsaction.event.isSpaceKeyEvent = function(e) {
  * special event has occurred, otherwise it hasn't.
  *
  * @param {!Event} e The mouseover/mouseout event.
- * @param {!Element} target The element on which the jsaction for the
+ * @param {string} type The type of the mouse special event.
+ * @param {!Element} element The element on which the jsaction for the
  *     mouseenter/mouseleave event is defined.
  * @return {boolean} True if the event is a mouseenter/mouseleave event.
  */
-jsaction.event.isMouseSpecialEvent = function(e, target) {
-  var related = /** @type {!Node} */(e.relatedTarget);
-  return (e.type == jsaction.EventType.MOUSEOVER ||
-      e.type == jsaction.EventType.MOUSEOUT) &&
-      (!related || !(related == target ||
-      jsaction.dom.contains(target, related)));
+jsaction.event.isMouseSpecialEvent = function(e, type, element) {
+  var related = /** @type {!Node} */ (e.relatedTarget);
+
+  return ((e.type == jsaction.EventType.MOUSEOVER &&
+           type == jsaction.EventType.MOUSEENTER) ||
+          (e.type == jsaction.EventType.MOUSEOUT &&
+           type == jsaction.EventType.MOUSELEAVE)) &&
+          (!related || (related !== element &&
+           !jsaction.dom.contains(element, related)));
 };
 
 
@@ -555,6 +573,10 @@ jsaction.event.IDENTIFIER_TO_KEY_TRIGGER_MAPPING = {
 
 /**
  * HTML controls for which to not call preventDefault when space is pressed.
- * @const {!Array.<!string>}
+ * @const {!Object.<string, number>}
  */
-jsaction.event.PROCESS_SPACE = ['CHECKBOX', 'OPTION', 'RADIO'];
+jsaction.event.PROCESS_SPACE = {
+  'CHECKBOX': 1,
+  'OPTION': 1,
+  'RADIO': 1
+};
